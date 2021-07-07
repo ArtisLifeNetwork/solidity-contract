@@ -1,9 +1,19 @@
-//SPDX-License-Identifier: UNLICENSED
+//SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC777/ERC777.sol";
 
+//ArtisLife Network Token
 contract Token is ERC777 {
-    constructor() ERC777("ArtisLife Token", "ARTIS", new address[](0)) {
+    /*
+        NAME: ArtisLife Network Token
+        SYMBOL: ARTIS
+        MAX_SUPPLY: 1,000,000,000 ARTIS
+        DECIMAL: 18
+        DISTRIBUTION METHOD: 
+            Minted all at genesis block.
+            Distributed out of Developer account according to whitepaper (artislife.network)
+    */
+    constructor() ERC777("ArtisLife Network Token", "ARTIS", new address[](0)) {
         _mint(msg.sender, 1000000000 * 10 ** 18, "", "");
     }
 }
