@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/token/ERC777/IERC777Sender.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC1820Registry.sol";
 
 contract PrivateSale is IERC777Recipient, IERC777Sender {
+    //Register as ERC777 Recipient
     IERC1820Registry private _erc1820 =
         IERC1820Registry(0x1820a4B7618BdE71Dce8cdc73aAB6C95905faD24);
     bytes32 private constant TOKENS_RECIPIENT_INTERFACE_HASH =
@@ -18,11 +19,18 @@ contract PrivateSale is IERC777Recipient, IERC777Sender {
     ERC777 public artisToken;
     uint256 public TotalValueLocked;
     address public ADMIN_ROLE;
+
+    //4 year timelock from time of contract creation
     uint256 public _CREATIONTIME = block.timestamp;
     uint256 private constant _TIMELOCK = 1460 days;
+    
+    //Map pointing addresses to balances
     mapping(address => uint256) investorBalances;
+    
+    //Map pointing addresses to withdrawals
     mapping(address => uint256) investorWithdrawals;
 
+    //Default constructor
     constructor() payable {
         artisAddress = 0x215cb512CFBFd03f9029e762b00cCc4EF11b16F6;
         artisToken = ERC777(artisAddress);
