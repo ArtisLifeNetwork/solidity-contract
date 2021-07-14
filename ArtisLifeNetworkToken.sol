@@ -2,8 +2,13 @@
 pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC777/ERC777.sol";
 
-//ArtisLife Network Token
-contract Token is ERC777 {
+/*
+    ArtisLife Network Token
+    ERC777
+
+    No minting allowed after contract creation.
+*/
+contract ArtisLifeNetworkToken is ERC777 {
     /*
         NAME: ArtisLife Network Token
         SYMBOL: ARTIS

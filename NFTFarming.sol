@@ -1,20 +1,14 @@
 //SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "hardhat/console.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC777/ERC777.sol";
 import "@openzeppelin/contracts/token/ERC777/IERC777Recipient.sol";
-import "@openzeppelin/contracts/token/ERC777/IERC777Sender.sol";
-import "@openzeppelin/contracts/token/ERC1155/presets/ERC1155PresetMinterPauser.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC1820Registry.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "./ArtisLifeNFT.sol";
 
-contract BasicStaking is IERC777Recipient, IERC777Sender {
+contract NFTFarming is IERC777Recipient {
     using SafeMath for uint256;
-    address public artisAddress;
     ERC777 public artisToken;
     address public nftMinterContractAddress;
     ArtisLifeNFT public nftMinter;
@@ -73,11 +67,9 @@ contract BasicStaking is IERC777Recipient, IERC777Sender {
     bytes[] public allNFTPoolIDs;
     uint256 public totalNFTIDs;
 
-    constructor() payable {
-        artisAddress = 0xC8625f6efbfd3d2e478D117c08CCD648B2525D62;
-        artisToken = ERC777(artisAddress);
-        nftMinterContractAddress = 0xC46482c0706Da23b2300083f5a89BCDD4931d4AE;
-        nftMinter = ArtisLifeNFT(nftMinterContractAddress);
+    constructor(address artis, address nftMinterAddress) payable {
+        artisToken = ERC777(artis);
+        nftMinter = ArtisLifeNFT(nftMinterAddress);
         ADMIN_ROLE = msg.sender;
         _erc1820.setInterfaceImplementer(
             address(this),
@@ -284,20 +276,6 @@ contract BasicStaking is IERC777Recipient, IERC777Sender {
                 ? allNFTs[nftID].stakingPool[msg.sender]
                 : 0;
     }
-
-    /*
-        tokensToSend
-
-        Disabled until needed.
-    */
-    function tokensToSend(
-        address operator,
-        address from,
-        address to,
-        uint256 amount,
-        bytes calldata userData,
-        bytes calldata operatorData
-    ) external override {}
 
     /*
         tokenReceived
@@ -515,8 +493,7 @@ contract BasicStaking is IERC777Recipient, IERC777Sender {
 
         Update the token address used for staking.
     */
-    function setERC777Address(address _erc) public onlyOwner() {
-        artisAddress = _erc;
+    function setERC777Address(address artisAddress) public onlyOwner() {
         artisToken = ERC777(artisAddress);
     }
 
@@ -526,8 +503,7 @@ contract BasicStaking is IERC777Recipient, IERC777Sender {
         Update the minter address.
     */
     function setNewMinter(address _minter) public onlyOwner() {
-        nftMinterContractAddress = _minter;
-        nftMinter = ArtisLifeNFT(nftMinterContractAddress);
+        nftMinter = ArtisLifeNFT(_minter);
     }
 
     /*
