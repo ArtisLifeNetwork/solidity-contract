@@ -11,9 +11,10 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
     Vesting smart contract that locks tokens for a specified period.
     The tokens are released continuously for the specified period.
-    This contract will be deployed 4 seperate times to symbolize the 4 different vesting
-    "funds" on the network: APF, RDF, Private and Public Sale. More info on
-    our whitepaper in section 3 ARTIS Tokenomics
+    This contract will be deployed 3 seperate times to symbolize the 3 different vesting
+    "funds" on the network: APF, RDF, Private Sale. More info on
+    our whitepaper in section 3 ARTIS Tokenomics.
+    All relevant variables are public for community trust.
 */
 contract TokenLockup is IERC777Recipient {
     using SafeMath for uint256;
@@ -27,24 +28,25 @@ contract TokenLockup is IERC777Recipient {
     //Variable to hold ARTIS token object
     ERC777 public artisToken;
 
-    //Total ARTIS tokens this contract is holding
+    //Total ARTIS tokens this contract is holding.
     uint256 public TotalValueLocked;
 
     //Address to Admin Priviledges
     address public ADMIN_ROLE;
 
     //Variables to keep track of timelock from time of contract creation
-    uint256 public _CREATIONTIME = block.timestamp;
-    uint256 private _TIMELOCK;
+    uint256 public _TIMELOCKSTART = block.timestamp;
+    uint256 public _TIMELOCK;
 
-    //Map pointing addresses to balances
-    mapping(address => uint256) recipientBalances;
+    //Map pointing addresses to token allocations
+    mapping(address => uint256) public tokenAllocations;
+    uint256 public sumOfAllocations;
 
     //Map pointing addresses to withdrawals
-    mapping(address => uint256) recipientWithdrawals;
+    mapping(address => uint256) public recipientWithdrawals;
 
     //Default constructor
-    constructor(uint256 lockLength, address artis) payable {
+    constructor(uint256 timelock, address artis) payable {
         //Set ARTIS token api
         artisToken = ERC777(artis);
         //Register sender as admin
@@ -56,7 +58,7 @@ contract TokenLockup is IERC777Recipient {
             address(this)
         );
         //Set timelock
-        _TIMELOCK = lockLength;
+        _TIMELOCK = timelock;
     }
 
     /*
@@ -72,10 +74,9 @@ contract TokenLockup is IERC777Recipient {
     /*
         tokensReceived
 
-        Function that is triggered after receiving any tokens. This
-        contract only accepts ARTIS token as specified in the
-        artisToken and artisAddress variables. Total Value Locked
-        is updated.
+        Function that is triggered after receiving any tokens. This contract only accepts 
+        ARTIS token as specified in the artisToken and artisAddress variables.
+        Total Value Locked is updated.
     */
     function tokensReceived(
         address operator,
@@ -89,38 +90,48 @@ contract TokenLockup is IERC777Recipient {
             artisToken.balanceOf(to) == amount.add(TotalValueLocked),
             "Only ARTIS accepted."
         );
+        //Start Timelock and update TVL
         TotalValueLocked = TotalValueLocked.add(amount);
     }
 
     /*
         addRecipient
 
-        Adds an entry for a recipient and logs how many total tokens
-        are allocated to that address.
+        Adds a recipient and logs how many total tokens are allocated to that address. 
+        If recipient exists, override the existing balance. Will not allow lowering
+        of balance to ensure trust for our presale investors.
     */
     function addRecipient(address ethAddress, uint256 amount)
         external
         onlyAdmin(msg.sender)
     {
         require(ethAddress != address(0), "Zero address not allowed.");
-        recipientBalances[ethAddress] = amount;
+        require(amount <= TotalValueLocked.sub(sumOfAllocations), "Not enough tokens for that allocation.");
+        require(amount > tokenAllocations[ethAddress], "Cannot lower balance");
+        sumOfAllocations = sumOfAllocations.sub(tokenAllocations[ethAddress]);
+        tokenAllocations[ethAddress] = amount;
+        sumOfAllocations = sumOfAllocations.add(tokenAllocations[ethAddress]);
     }
 
     /*
         available
 
         Returns the amount of tokens that are available for withdrawal.
-
-        Available = TotalPayout * ( Percent of timelock completed ) - Withdrawed Tokens
+        Formula:
+        If Timelock has completed
+            Available = TotalPayout - Withdrawn Tokens 
+        Else
+            Available = TotalPayout * ( Percent of timelock completed ) - Withdrawed Tokens
     */
     function available() public view returns (uint256) {
-        uint256 percTimeCompleted = (block.timestamp.sub(_CREATIONTIME)).div(_TIMELOCK);
-        return
-            //Total Token Payout for sender
-            recipientBalances[msg.sender]
-                //Multiplied by Percent of timelock completed
-                .mul(percTimeCompleted > 1 ? 1 : percTimeCompleted)
-                //Minus already withdrawed tokens
+        //Seconds that have passed since contract creation
+        uint256 timeElapsed = block.timestamp.sub(_TIMELOCKSTART);
+
+        if (_TIMELOCK < timeElapsed)
+            return tokenAllocations[msg.sender]
+                .sub(recipientWithdrawals[msg.sender]);
+        return tokenAllocations[msg.sender]
+                .div(_TIMELOCK.div(timeElapsed))
                 .sub(recipientWithdrawals[msg.sender]);
     }
 
@@ -130,26 +141,18 @@ contract TokenLockup is IERC777Recipient {
         Withdraws all available tokens.
     */
     function withdraw() external {
-        require(
-            available() > 0,
-            "No Tokens to Withdraw."
-        );
-        require(
-            TotalValueLocked > available(),
-            "Not enough ARTIS in contract to payout."
-        );
+        require(available() > 0, "No Tokens to Withdraw.");
         //Save available withdraw balance
-        uint256 availableBefore = available();
+        uint256 amount = available();
 
-        //Add withdrawal to existing withdrawals
+        //Add new withdrawal to existing withdrawals
         recipientWithdrawals[msg.sender] = recipientWithdrawals[msg.sender].add(
-            availableBefore
+            amount
         );
-
         //Send recipient their ARTIS tokens
-        artisToken.transferFrom(address(this), msg.sender, availableBefore);
+        artisToken.operatorSend(address(this), msg.sender, amount, abi.encodePacked(amount), abi.encodePacked("Presale Withdraw"));
 
         //Update Total Value Locked
-        TotalValueLocked = TotalValueLocked.sub(availableBefore);
+        TotalValueLocked = TotalValueLocked.sub(amount);
     }
 }
