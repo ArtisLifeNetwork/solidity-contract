@@ -109,7 +109,7 @@ contract TokenLockup is IERC777Recipient {
         onlyAdmin(msg.sender)
     {
         require(ethAddress != address(0), "Zero address not allowed.");
-        require(amount <= TotalValueHeld.sub(sumOfAllocations), "Not enough tokens for that allocation.");
+        require(amount <= TotalValueHeld.sub(sumOfAllocations).sub(tokenAllocations[ethAddress]), "Not enough tokens for that allocation.");
         require(amount > tokenAllocations[ethAddress], "Cannot lower balance");
         sumOfAllocations = sumOfAllocations.sub(tokenAllocations[ethAddress]);
         tokenAllocations[ethAddress] = amount;
