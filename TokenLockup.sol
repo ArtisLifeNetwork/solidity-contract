@@ -30,6 +30,8 @@ contract TokenLockup is IERC777Recipient {
 
     //Total ARTIS tokens this contract is holding.
     uint256 public TotalValueLocked;
+    //Total ARTIS tokens this contract has held.
+    uint256 public TotalValueHeld;
 
     //Address to Admin Priviledges
     address public ADMIN_ROLE;
@@ -92,6 +94,7 @@ contract TokenLockup is IERC777Recipient {
         );
         //Start Timelock and update TVL
         TotalValueLocked = TotalValueLocked.add(amount);
+        TotalValueHeld = TotalValueHeld.add(amount);
     }
 
     /*
@@ -106,7 +109,7 @@ contract TokenLockup is IERC777Recipient {
         onlyAdmin(msg.sender)
     {
         require(ethAddress != address(0), "Zero address not allowed.");
-        require(amount <= TotalValueLocked.sub(sumOfAllocations), "Not enough tokens for that allocation.");
+        require(amount <= TotalValueHeld.sub(sumOfAllocations), "Not enough tokens for that allocation.");
         require(amount > tokenAllocations[ethAddress], "Cannot lower balance");
         sumOfAllocations = sumOfAllocations.sub(tokenAllocations[ethAddress]);
         tokenAllocations[ethAddress] = amount;
