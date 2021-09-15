@@ -1,7 +1,8 @@
-# solidity-contract
-Solidity smart contracts. BETA
+# ArtisLife Newtork
 
-ArtisLife Newtork
+Cross-Chain NFT Distributor
+
+Solidity smart contracts. BETA
 
 This repo contains solidity contracts used throughout ArtisLife Network.
 
