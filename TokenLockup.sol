@@ -48,9 +48,9 @@ contract TokenLockup is IERC777Recipient {
     mapping(address => uint256) public recipientWithdrawals;
 
     //Default constructor
-    constructor(uint256 timelock, address artis) payable {
+    constructor() payable {
         //Set ARTIS token api
-        artisToken = ERC777(artis);
+        artisToken = ERC777(0x63231d5060Da555026980d67F3d8758805b27E83);
         //Register sender as admin
         ADMIN_ROLE = msg.sender;
         //Register as ERC777 receiver
@@ -60,7 +60,7 @@ contract TokenLockup is IERC777Recipient {
             address(this)
         );
         //Set timelock
-        _TIMELOCK = timelock;
+        _TIMELOCK = 600;
     }
 
     /*
@@ -109,7 +109,13 @@ contract TokenLockup is IERC777Recipient {
         onlyAdmin(msg.sender)
     {
         require(ethAddress != address(0), "Zero address not allowed.");
-        require(amount <= TotalValueHeld.sub(sumOfAllocations).add(tokenAllocations[ethAddress]), "Not enough tokens for that allocation.");
+        require(
+            amount <=
+                TotalValueHeld.sub(sumOfAllocations).add(
+                    tokenAllocations[ethAddress]
+                ),
+            "Not enough tokens for that allocation."
+        );
         require(amount > tokenAllocations[ethAddress], "Cannot lower balance");
         sumOfAllocations = sumOfAllocations.sub(tokenAllocations[ethAddress]);
         tokenAllocations[ethAddress] = amount;
@@ -131,10 +137,14 @@ contract TokenLockup is IERC777Recipient {
         uint256 timeElapsed = block.timestamp.sub(_TIMELOCKSTART);
 
         if (_TIMELOCK < timeElapsed)
-            return tokenAllocations[msg.sender]
-                .sub(recipientWithdrawals[msg.sender]);
-        return tokenAllocations[msg.sender]
-                .div(_TIMELOCK.div(timeElapsed))
+            return
+                tokenAllocations[msg.sender].sub(
+                    recipientWithdrawals[msg.sender]
+                );
+        return
+            tokenAllocations[msg.sender]
+                .mul(timeElapsed.mul(10**18).div(_TIMELOCK))
+                .div(10**18)
                 .sub(recipientWithdrawals[msg.sender]);
     }
 
@@ -153,7 +163,13 @@ contract TokenLockup is IERC777Recipient {
             amount
         );
         //Send recipient their ARTIS tokens
-        artisToken.operatorSend(address(this), msg.sender, amount, abi.encodePacked(amount), abi.encodePacked("Presale Withdraw"));
+        artisToken.operatorSend(
+            address(this),
+            msg.sender,
+            amount,
+            abi.encodePacked(amount),
+            abi.encodePacked("Presale Withdraw")
+        );
 
         //Update Total Value Locked
         TotalValueLocked = TotalValueLocked.sub(amount);
